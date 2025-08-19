@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seven Wonders Explorer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2c3e50;
+            --accent: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #34495e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Poppins', sans-serif; line-height: 1.6; background: #f8f9fa; color: #333; }
+        header { 
+            background: linear-gradient(135deg, var(--secondary), var(--primary)); 
+            color: white; 
+            padding: 2rem 1rem; 
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+        .controls { 
+            display: flex; 
+            gap: 1rem; 
+            margin: 2rem 0; 
+            flex-wrap: wrap;
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .controls input, .controls select { 
+            padding: 0.75rem 1rem; 
+            border: 2px solid #e0e0e0; 
+            border-radius: 8px; 
+            flex: 1; 
+            min-width: 200px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        .controls input:focus, .controls select:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        .controls button { 
+            padding: 0.75rem 1.5rem; 
+            background: var(--accent); 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .controls button:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(231, 76, 60, 0.3);
+        }
+        .wonders-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); 
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        .wonder-card { 
+            background: white; 
+            border-radius: 12px; 
+            overflow: hidden; 
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1); 
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .wonder-card:hover { 
+            transform: translateY(-10px); 
+            box-shadow: 0 12px 25px rgba(0,0,0,0.15); 
+        }
+        .wonder-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--accent);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            z-index: 1;
+        }
+        .wonder-img { 
+            width: 100%; 
+            height: 250px; 
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+        .wonder-card:hover .wonder-img {
+            transform: scale(1.05);
+        }
+        .wonder-content { padding: 1.5rem; }
+        .wonder-title { 
+            font-size: 1.5rem; 
+            margin-bottom: 0.5rem; 
+            color: var(--secondary); 
+            font-weight: 700;
+        }
+        .wonder-location { 
+            display: flex; 
+            align-items: center; 
+            gap: 0.5rem; 
+            color: var(--primary); 
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+        .wonder-desc { 
+            margin-bottom: 1rem; 
+            color: #555; 
+            line-height: 1.7;
+        }
+        .wonder-stats { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-top: 1.5rem;
+            align-items: center;
+        }
+        .wonder-rating {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            color: #f39c12;
+            font-weight: 600;
+        }
+        .wonder-visitors {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            color: #7f8c8d;
+        }
+        .wonder-map { 
+            height: 200px; 
+            margin-top: 1.5rem; 
+            border-radius: 8px; 
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+        }
+        .wonder-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+        .like-btn {
+            background: none;
+            border: none;
+            color: var(--accent);
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+        }
+        .like-btn:hover {
+            background: rgba(231, 76, 60, 0.1);
+        }
+        .like-btn.liked {
+            color: white;
+            background: var(--accent);
+        }
+        .view-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .view-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+        }
+        .modal { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.8); 
+            display: none; 
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .modal-content { 
+            background: white; 
+            margin: 2rem auto; 
+            padding: 2rem; 
+            border-radius: 12px; 
+            max-width: 800px; 
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: slideUp 0.4s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .close-btn { 
+            position: absolute; 
+            top: 1rem; 
+            right: 1rem; 
+            font-size: 1.5rem; 
+            cursor: pointer;
+            color: #7f8c8d;
+            transition: all 0.3s ease;
+            background: none;
+            border: none;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        .close-btn:hover {
+            color: var(--accent);
+            background: rgba(231, 76, 60, 0.1);
+        }
+        .modal-img {
+            width: 100%;
+            height: 350px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin: 1rem 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .modal-section {
+            margin-bottom: 1.5rem;
+        }
+        .modal-section h3 {
+            color: var(--secondary);
+            margin-bottom: 0.5rem;
+            font-size: 1.3rem;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 0.5rem;
+            display: inline-block;
+        }
+        .modal-map {
+            height: 300px;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            border: 1px solid #e0e0e0;
+        }
+        footer { 
+            text-align: center; 
+            padding: 2rem; 
+            background: var(--secondary); 
+            color: white; 
+            margin-top: 3rem;
+        }
+        @media (max-width: 768px) { 
+            .wonders-grid { grid-template-columns: 1fr; } 
+            .modal-content {
+                width: 95%;
+                margin: 1rem auto;
+                padding: 1.5rem;
+            }
+            .modal-img {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><i class="fas fa-globe-americas"></i> Seven Wonders Explorer</h1>
+            <p>Discover mankind's greatest architectural achievements</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="controls">
+            <input type="text" id="searchInput" placeholder="🔍 Search wonders...">
+            <select id="filterCountry">
+                <option value="">All Countries</option>
+            </select>
+            <select id="filterRating">
+                <option value="">All Ratings</option>
+                <option value="4.5">⭐ 4.5+</option>
+                <option value="4.7">⭐⭐ 4.7+</option>
+                <option value="4.9">⭐⭐⭐ 4.9+</option>
+            </select>
+            <button id="searchBtn"><i class="fas fa-search"></i> Search</button>
+        </div>
+        <div class="wonders-grid" id="wondersContainer"></div>
+    </main>
+
+    <div id="wonderModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn">&times;</button>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; <span id="currentYear"></span> Seven Wonders Explorer | Created with <i class="fas fa-heart" style="color: var(--accent);"></i> for history enthusiasts</p>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // Enhanced Wonders Data
+        const wonders = [
+            {
+                id: 1,
+                name: "Great Pyramid of Giza",
+                country: "Egypt",
+                district: "Giza Plateau",
+                image: "https://upload.wikimedia.org/wikipedia/commons/e/e3/Kheops-Pyramid.jpg",
+                built: "2560 BCE",
+                description: "The oldest and largest of the three pyramids in the Giza pyramid complex, this ancient marvel was built as a tomb for the Fourth Dynasty Egyptian pharaoh Khufu. Standing at 146.6 meters (481 feet), it was the tallest man-made structure in the world for over 3,800 years.",
+                history: "Constructed over a 20-year period during Khufu's reign, the pyramid consists of an estimated 2.3 million stone blocks, each weighing between 2.5 to 15 tons. The precision of its construction is astounding - the four sides of the base have an average error of only 58mm in length.",
+                coordinates: [29.9792, 31.1342],
+                visitors: "14.7 million/year",
+                rating: 4.8,
+                likes: 0,
+                facts: [
+                    "Original height: 146.6m (now 138.8m due to erosion)",
+                    "Weight: Approximately 6 million tons",
+                    "Alignment: Accurate to within 0.05 degrees of true north"
+                ]
+            },
+            {
+                id: 2,
+                name: "Great Wall of China",
+                country: "China",
+                district: "Northern China",
+                image: "https://upload.wikimedia.org/wikipedia/commons/2/23/The_Great_Wall_of_China_at_Jinshanling-edit.jpg",
+                built: "7th century BCE - 1878 CE",
+                description: "This series of fortifications made of stone, brick, tamped earth, wood, and other materials was built along an east-to-west line across the historical northern borders of China to protect against nomadic invasions.",
+                history: "The earliest walls were built as early as the 7th century BCE. The most famous sections were built by the Ming dynasty (1368-1644). The total length of all sections measures approximately 21,196 km (13,171 mi), making it the longest structure ever built.",
+                coordinates: [40.4319, 116.5704],
+                visitors: "10 million/year",
+                rating: 4.7,
+                likes: 0,
+                facts: [
+                    "Total length: 21,196 km (13,171 mi)",
+                    "Construction period: Over 2,300 years",
+                    "Materials: Varied by dynasty (earth, stone, brick)"
+                ]
+            },
+            {
+                id: 3,
+                name: "Petra",
+                country: "Jordan",
+                district: "Ma'an Governorate",
+                image: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Treasury_petra_crop.jpeg",
+                built: "5th century BCE",
+                description: "The 'Rose City' is famous for its rock-cut architecture and water conduit system. This ancient Nabataean city was a flourishing trading center that became the capital of the Nabataean Kingdom.",
+                history: "Petra was established possibly as early as 312 BCE. It flourished as the capital of the Nabataean Empire from 400 BCE to 106 CE. The city was lost to the Western world until 1812 when it was rediscovered by Swiss explorer Johann Ludwig Burckhardt.",
+                coordinates: [30.3285, 35.4444],
+                visitors: "1 million/year",
+                rating: 4.9,
+                likes: 0,
+                facts: [
+                    "Famous structure: Al-Khazneh (The Treasury)",
+                    "Water system: Advanced network of dams and cisterns",
+                    "Rock color: Varies from pink to red to orange"
+                ]
+            },
+            {
+                id: 4,
+                name: "Colosseum",
+                country: "Italy",
+                district: "Rome",
+                image: "https://upload.wikimedia.org/wikipedia/commons/d/de/Colosseo_2020.jpg",
+                built: "70-80 CE",
+                description: "This oval amphitheatre in the center of Rome is the largest ancient amphitheatre ever built. It could hold an estimated 50,000 to 80,000 spectators who came to watch gladiatorial contests, animal hunts, and other public spectacles.",
+                history: "Built under the emperors Vespasian and Titus, the Colosseum was in use for nearly 500 years. The structure measures 189m long, 156m wide, and 50m high. Despite being partially ruined, it remains an iconic symbol of Imperial Rome.",
+                coordinates: [41.8902, 12.4922],
+                visitors: "7.6 million/year",
+                rating: 4.6,
+                likes: 0,
+                facts: [
+                    "Original name: Flavian Amphitheatre",
+                    "Construction time: Approximately 10 years",
+                    "Materials: Travertine limestone, tuff, brick"
+                ]
+            },
+            {
+                id: 5,
+                name: "Chichen Itza",
+                country: "Mexico",
+                district: "Yucatán Peninsula",
+                image: "https://upload.wikimedia.org/wikipedia/commons/5/51/Chichen_Itza_3.jpg",
+                built: "600-1200 CE",
+                description: "This large pre-Columbian city built by the Maya people exhibits a multitude of architectural styles. The stepped pyramid 'El Castillo' dominates the site and demonstrates the Maya's astronomical precision.",
+                history: "Chichen Itza was a major focal point in the northern Maya lowlands from the Late Classic (600-900 CE) through the Terminal Classic (800-900 CE) and into the early portion of the Postclassic period (900-1200 CE).",
+                coordinates: [20.6829, -88.5686],
+                visitors: "2.6 million/year",
+                rating: 4.5,
+                likes: 0,
+                facts: [
+                    "Famous for: Astronomical alignments",
+                    "El Castillo: 24m high with 365 steps",
+                    "Acoustics: Claps echo as chirping sounds"
+                ]
+            },
+            {
+                id: 6,
+                name: "Machu Picchu",
+                country: "Peru",
+                district: "Cusco Region",
+                image: "https://upload.wikimedia.org/wikipedia/commons/e/eb/Machu_Picchu%2C_Peru.jpg",
+                built: "1450 CE",
+                description: "This 15th-century Inca citadel is located on a mountain ridge 2,430 meters (7,970 ft) above sea level. Often called the 'Lost City of the Incas', it's renowned for its sophisticated dry-stone construction.",
+                history: "Built as an estate for the Inca emperor Pachacuti (1438-1472), Machu Picchu was abandoned during the Spanish Conquest. The site was unknown to the outside world until 1911 when it was brought to international attention by American historian Hiram Bingham.",
+                coordinates: [-13.1631, -72.5450],
+                visitors: "1.5 million/year",
+                rating: 4.9,
+                likes: 0,
+                facts: [
+                    "Elevation: 2,430m (7,970 ft)",
+                    "Structures: About 200 buildings",
+                    "Construction: No mortar used (ashlar technique)"
+                ]
+            },
+            {
+                id: 7,
+                name: "Taj Mahal",
+                country: "India",
+                district: "Agra",
+                image: "https://upload.wikimedia.org/wikipedia/commons/6/67/Taj_Mahal_in_India_-_Kristian_Bertel.jpg",
+                built: "1632-1653 CE",
+                description: "This ivory-white marble mausoleum was commissioned in 1632 by the Mughal emperor Shah Jahan to house the tomb of his favorite wife, Mumtaz Mahal. It's considered the finest example of Mughal architecture.",
+                history: "The Taj Mahal complex includes a mosque, guest house, and formal gardens. Construction employed about 20,000 artisans under the guidance of a board of architects. The marble changes color depending on sunlight and moonlight.",
+                coordinates: [27.1751, 78.0421],
+                visitors: "8 million/year",
+                rating: 4.8,
+                likes: 0,
+                facts: [
+                    "Construction time: Approximately 22 years",
+                    "Materials: White marble from Rajasthan",
+                    "Cost: Estimated 32 million rupees (about $1 billion today)"
+                ]
+            }
+        ];
+
+        // DOM Elements
+        const wondersContainer = document.getElementById('wondersContainer');
+        const searchInput = document.getElementById('searchInput');
+        const filterCountry = document.getElementById('filterCountry');
+        const filterRating = document.getElementById('filterRating');
+        const searchBtn = document.getElementById('searchBtn');
+        const modal = document.getElementById('wonderModal');
+        const modalContent = document.getElementById('modalContent');
+        const closeBtn = document.querySelector('.close-btn');
+        const currentYear = document.getElementById('currentYear');
+
+        // Initialize
+        function init() {
+            currentYear.textContent = new Date().getFullYear();
+            populateFilters();
+            renderWonders(wonders);
+            
+            // Event Listeners
+            searchBtn.addEventListener('click', searchWonders);
+            searchInput.addEventListener('keyup', (e) => e.key === 'Enter' && searchWonders());
+            filterCountry.addEventListener('change', searchWonders);
+            filterRating.addEventListener('change', searchWonders);
+            closeBtn.addEventListener('click', () => modal.style.display = 'none');
+            modal.addEventListener('click', (e) => e.target === modal && (modal.style.display = 'none'));
+        }
+
+        // Populate filters
+        function populateFilters() {
+            // Countries
+            const countries = [...new Set(wonders.map(w => w.country))];
+            countries.forEach(country => {
+                const option = document.createElement('option');
+                option.value = country;
+                option.textContent = country;
+                filterCountry.appendChild(option);
+            });
+        }
+
+        // Render wonders
+        function renderWonders(data) {
+            wondersContainer.innerHTML = '';
+            
+            if (data.length === 0) {
+                wondersContainer.innerHTML = `
+                    <div class="no-results" style="grid-column:1/-1; text-align:center; padding:2rem;">
+                        <i class="fas fa-search" style="font-size:3rem; color:#7f8c8d; margin-bottom:1rem;"></i>
+                        <h3>No wonders found</h3>
+                        <p>Try adjusting your search filters</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            data.forEach(wonder => {
+                const card = document.createElement('div');
+                card.className = 'wonder-card';
+                card.innerHTML = `
+                    <div class="wonder-badge">#${wonder.id}</div>
+                    <img src="${wonder.image}" alt="${wonder.name}" class="wonder-img">
+                    <div class="wonder-content">
+                        <h3 class="wonder-title">${wonder.name}</h3>
+                        <div class="wonder-location">
+                            <i class="fas fa-map-marker-alt"></i>
+                            ${wonder.district}, ${wonder.country}
+                        </div>
+                        <p class="wonder-desc">${wonder.description.substring(0, 150)}...</p>
+                        <div class="wonder-stats">
+                            <div class="wonder-rating">
+                                <i class="fas fa-star"></i> ${wonder.rating}
+                            </div>
+                            <div class="wonder-visitors">
+                                <i class="fas fa-users"></i> ${wonder.visitors}
+                            </div>
+                        </div>
+                        <div id="map-${wonder.id}" class="wonder-map"></div>
+                        <div class="wonder-actions">
+                            <button class="like-btn ${wonder.likes > 0 ? 'liked' : ''}" data-id="${wonder.id}">
+                                <i class="fas fa-heart"></i>
+                                <span class="like-count">${wonder.likes}</span>
+                            </button>
+                            <button class="view-btn" data-id="${wonder.id}">
+                                <i class="fas fa-eye"></i> View Details
+                            </button>
+                        </div>
+                    </div>
+                `;
+                wondersContainer.appendChild(card);
+                
+                // Initialize map
+                initMap(wonder.id, wonder.coordinates, wonder.name);
+                
+                // Add event listeners
+                card.querySelector('.like-btn').addEventListener('click', () => {
+                    wonder.likes++;
+                    saveData();
+                    renderWonders(data);
+                });
+                
+                card.querySelector('.view-btn').addEventListener('click', () => showDetails(wonder));
+            });
+        }
+
+        // Initialize map
+        function initMap(id, coordinates, name) {
+            const map = L.map(`map-${id}`).setView(coordinates, 10);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+            
+            const customIcon = L.icon({
+                iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+            });
+            
+            L.marker(coordinates, {icon: customIcon})
+                .addTo(map)
+                .bindPopup(`<b>${name}</b>`)
+                .openPopup();
+        }
+
+        // Show details modal
+        function showDetails(wonder) {
+            modalContent.innerHTML = `
+                <h2>${wonder.name}</h2>
+                <p><i class="fas fa-map-marker-alt"></i> ${wonder.district}, ${wonder.country}</p>
+                
+                <div style="display:flex; gap:1rem; margin:1rem 0; flex-wrap:wrap;">
+                    <span style="background:#e3f2fd; padding:0.5rem 1rem; border-radius:20px; display:flex; align-items:center; gap:0.5rem;">
+                        <i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Built: ${wonder.built}
+                    </span>
+                    <span style="background:#e8f5e9; padding:0.5rem 1rem; border-radius:20px; display:flex; align-items:center; gap:0.5rem;">
+                        <i class="fas fa-star" style="color:#f39c12;"></i> Rating: ${wonder.rating}/5
+                    </span>
+                    <span style="background:#f3e5f5; padding:0.5rem 1rem; border-radius:20px; display:flex; align-items:center; gap:0.5rem;">
+                        <i class="fas fa-users" style="color:#9c27b0;"></i> Visitors: ${wonder.visitors}
+                    </span>
+                </div>
+                
+                <img src="${wonder.image}" alt="${wonder.name}" class="modal-img">
+                
+                <div class="modal-section">
+                    <h3>Description</h3>
+                    <p>${wonder.description}</p>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>History</h3>
+                    <p>${wonder.history}</p>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Key Facts</h3>
+                    <ul style="margin-left:1.5rem;">
+                        ${wonder.facts.map(fact => `<li>${fact}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Location</h3>
+                    <div id="modalMap" class="modal-map"></div>
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+            
+            // Initialize modal map
+            const modalMap = L.map('modalMap').setView(wonder.coordinates, 12);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(modalMap);
+            
+            const customIcon = L.icon({
+                iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+                iconSize: [40, 40],
+                iconAnchor: [20, 40],
+                popupAnchor: [0, -40]
+            });
+            
+            L.marker(wonder.coordinates, {icon: customIcon})
+                .addTo(modalMap)
+                .bindPopup(`<b>${wonder.name}</b><br>${wonder.district}, ${wonder.country}`)
+                .openPopup();
+        }
+
+        // Search functionality
+        function searchWonders() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const countryFilter = filterCountry.value;
+            const ratingFilter = parseFloat(filterRating.value) || 0;
+            
+            const filtered = wonders.filter(wonder => {
+                const matchesSearch = 
+                    wonder.name.toLowerCase().includes(searchTerm) ||
+                    wonder.description.toLowerCase().includes(searchTerm) ||
+                    wonder.district.toLowerCase().includes(searchTerm) ||
+                    wonder.history.toLowerCase().includes(searchTerm);
+                
+                const matchesCountry = countryFilter ? wonder.country === countryFilter : true;
+                const matchesRating = ratingFilter ? wonder.rating >= ratingFilter : true;
+                
+                return matchesSearch && matchesCountry && matchesRating;
+            });
+            
+            renderWonders(filtered);
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('sevenWondersData', JSON.stringify(wonders));
+        }
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
